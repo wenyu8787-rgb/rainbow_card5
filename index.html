@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教師情緒彩虹卡 - 每日激勵與歷史</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Google 字體 Inter 和 Noto Sans TC -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght{400;700}&display=swap" rel="stylesheet">
+    <!-- 載入 html2canvas 函式庫，用於截圖下載 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* 設定全域字體，優先使用 Noto Sans TC 支援中文 */
+        body {
+            font-family: 'Noto Sans TC', 'Inter', sans-serif;
+            background-color: #f7f3f9; /* 柔和淺紫色背景 */
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* 內容區塊的共同最大寬度 */
+        .max-w-container {
+            max-width: 42rem; /* 約 672px，確保結構清晰 */
+            width: 100%;
+        }
+
+        /* 卡片專屬樣式 */
+        .rainbow-card {
+            min-height: 250px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1), 0 5px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.5s ease-in-out;
+            cursor: pointer;
+            border: 4px solid #fff; /* 白色邊框 */
+            background-image: linear-gradient(135deg, #FFB6C1 0%, #FFDAB9 100%); /* 預設漸層 (第一張卡顏色) */
+            background-size: 200% 200%;
+            animation: gradient-shift 10s ease infinite;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* 抽卡按鈕樣式 */
+        .main-button {
+            background-image: linear-gradient(45deg, #6B46C1, #9F7AEA); /* 柔和紫色漸層 */
+            transition: all 0.3s ease;
+        }
+        .main-button:hover:not(:disabled) {
+            box-shadow: 0 10px 20px rgba(159, 122, 234, 0.4);
+            transform: translateY(-2px);
+        }
+        .main-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 列印按鈕樣式 */
+        .print-button {
+            background-color: #4B5563; /* 灰色背景 */
+            transition: all 0.3s ease;
+        }
+        .print-button:hover {
+            background-color: #374151; /* 深灰色 */
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        /* AI 解讀按鈕樣式 */
+        .interpret-button {
+            background-color: #FBBF24; /* 琥珀色 */
+            color: #854D0E; /* 深棕色文字 */
+            transition: all 0.3s ease;
+        }
+        .interpret-button:hover:not(:disabled) {
+            background-color: #F59E0B;
+            box-shadow: 0 5px 10px rgba(245, 158, 11, 0.4);
+            transform: translateY(-1px);
+        }
+        .interpret-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* 隱藏內容的動畫 */
+        .hidden-content {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .show-content {
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+        }
+
+        /* 可展開/收合區塊的樣式 */
+        .collapsible {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
+        }
+        .collapsible.active {
+            max-height: 500px; /* 設置一個足夠大的高度 */
+        }
+
+        /* 歷史紀錄區塊的展開/收合樣式 */
+        .history-item-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+        }
+        .history-item-details.active {
+            max-height: 200px; /* 根據內容調整 */
+            padding-top: 1rem;
+        }
+        
+        /* 鏡像彩虹圖示 */
+        #mirroredRainbow {
+            transform: scaleX(-1);
+        }
+        /* 分頁按鈕樣式 */
+        .page-button {
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-container">
+        <!-- 列印/下載的捕捉區域，包含上半部內容 -->
+        <div id="printableArea" class="bg-white rounded-3xl p-6 md:p-10 shadow-2xl">
+            <header class="text-center mb-8">
+                <!-- 標題：右側彩虹圖示已添加鏡像 CSS -->
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">🌈 教師情緒彩虹卡 <span id="mirroredRainbow" class="inline-block">🌈</span></h1>
+                <p id="dateDisplay" class="text-lg text-purple-500 font-medium">今天是...</p>
+                <p class="text-sm text-gray-500 mt-1">給自己一點溫柔，從卡片中汲取力量。</p>
+            </header>
+
+            <!-- 訊息/錯誤提示區 -->
+            <div id="messageBox" class="text-center p-3 mb-6 hidden rounded-xl" role="alert"></div>
+
+            <!-- 彩虹卡片區 -->
+            <div id="cardContainer" class="rainbow-card flex flex-col justify-center items-center text-center p-8 rounded-2xl text-white">
+                <p id="cardTitle" class="text-2xl font-bold mb-4">系統初始化中...</p>
+                <p id="cardContent" class="text-lg hidden-content">卡片內容</p>
+                <p id="cardFooter" class="text-sm mt-4 hidden-content">🌟 感謝你的付出 🌟</p>
+            </div>
+            
+            <!-- Gemini API 解讀結果區塊 (NEW) -->
+            <div id="geminiInterpretationArea" class="mt-6 p-4 bg-purple-50 rounded-xl shadow-inner text-gray-700 hidden">
+                <h3 class="text-lg font-semibold text-purple-700 mb-2">✨ 你的今日應用建議：</h3>
+                <p id="geminiInterpretationText"></p>
+            </div>
+
+        </div>
+        <!-- 結束列印捕捉區域 -->
+
+        <!-- 登入狀態控制與按鈕區塊 -->
+        <div class="mt-8">
+            <!-- 登入狀態與 ID 顯示 -->
+            <div id="authStatusArea" class="mb-4 text-center">
+                <p id="userIdDisplay" class="text-sm text-gray-500 text-center break-all">UserID: 系統正在嘗試登入...</p>
+            </div>
+            
+            <button id="drawButton" 
+                    class="w-full py-3 px-6 rounded-xl text-white font-semibold text-lg shadow-lg main-button"
+                    onclick="drawCard()" disabled>
+                等待初始化...
+            </button>
+            
+            <div class="mt-4 flex flex-col md:flex-row justify-between gap-4">
+                <button id="interpretButton" 
+                        class="flex-1 py-3 px-6 rounded-xl font-semibold text-base shadow-lg interpret-button hidden"
+                        onclick="getGeminiInterpretation()">
+                    ✨ 獲得今日應用建議
+                </button>
+                <button id="printButton" 
+                        class="flex-1 py-3 px-6 rounded-xl text-white font-semibold text-base shadow-lg print-button hidden"
+                        onclick="downloadCardImage()">
+                    列印/下載卡片
+                </button>
+            </div>
+        </div>
+        <p id="statusText" class="text-sm mt-3 text-gray-500 text-center"></p>
+
+        <!-- 自訂佳句管理區塊 -->
+        <div class="bg-white rounded-3xl p-6 md:p-10 shadow-2xl mt-6">
+            <button onclick="toggleCustomCardsSection()"
+                    class="w-full py-2 px-4 rounded-xl text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 transition-colors flex justify-between items-center">
+                <span>管理我的佳句 (<span id="customCardCount">0</span> 張)</span>
+                <span id="toggleIcon">▼</span>
+            </button>
+            
+            <div id="customCardsSection" class="collapsible">
+                <div class="p-4 bg-gray-50 rounded-xl mt-3">
+                    <h3 class="font-semibold text-gray-700 mb-2">新增一則佳句：</h3>
+                    <textarea id="newCustomQuote" class="w-full p-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500 text-gray-800" rows="3" placeholder="輸入您的激勵句子（例如：教育是一場馬拉松，而不是短跑。）"></textarea>
+                    <button onclick="handleSaveCustomCard()"
+                            class="mt-2 w-full py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors">
+                        儲存佳句並加入抽卡庫
+                    </button>
+                    
+                    <h3 class="font-semibold text-gray-700 mt-4 mb-2 border-t pt-3">我的自訂佳句列表：</h3>
+                    <ul id="customCardsList" class="space-y-2 text-sm max-h-40 overflow-y-auto pr-2">
+                        <!-- Custom cards will be listed here -->
+                        <li class="text-gray-500 italic">目前沒有自訂佳句，請等待登入後新增！</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 歷史紀錄區塊 (新增) -->
+        <div class="bg-white rounded-3xl p-6 md:p-10 shadow-2xl mt-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4 flex justify-between items-center">
+                抽取歷史紀錄
+                <span id="historyCount" class="text-sm font-medium text-purple-500"></span>
+            </h2>
+            <div id="historyList" class="space-y-4">
+                <p id="historyLoading" class="text-center text-gray-500">正在載入歷史紀錄...</p>
+                <!-- 歷史紀錄列表將在此處渲染 -->
+            </div>
+            <!-- 分頁控制項 -->
+            <nav id="paginationControls" class="mt-6 flex justify-center items-center space-x-2">
+                <!-- 分頁按鈕將在此處渲染 -->
+            </nav>
+        </div>
+        <!-- 歷史紀錄區塊 (結束) -->
+
+        <footer class="text-center mt-8 pt-4 border-t border-gray-100">
+            <p class="text-xs text-gray-400">數據將安全存儲於您的專屬空間，確保每天的激勵不重複。</p>
+        </footer>
+    </div>
+
+    <!-- Firebase / Gemini 腳本 -->
+    <script type="module">
+        // --- 1. 使用環境變數定義配置，避免模組解析錯誤 ---
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // ----------------------------------------------------
+        
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // 🚨 修正：新增 signInWithCustomToken 確保使用完整的 Canvas 認證流程
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, addDoc, collection, onSnapshot, deleteDoc, query, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 設定 Firestore 日誌級別為 Debug
+        setLogLevel('Debug');
+
+        // *************************************************************************
+        // 🚨 安全規則提醒：請確保您的 Firebase 專案已設定以下規則
+        // *************************************************************************
+
+        // 全域變數
+        let db;
+        let auth;
+        let userId = null;
+        let isAuthReady = false;
+        let customCards = []; // 儲存自訂卡片
+        let allHistoryRecords = []; // 儲存所有歷史紀錄 (用於分頁)
+        let currentPage = 1; // 當前頁碼，從 1 開始
+        const itemsPerPage = 10; // 每頁顯示 10 筆資料
+        
+        
+        // Gemini API Configuration
+        const GEMINI_MODEL = 'gemini-2.5-flash-preview-09-2025';
+        const systemPrompt = "你是一位充滿同理心且經驗豐富的資深教師顧問。你的任務是根據提供的語句，為使用者（一位老師）提供一個簡潔、實用且正向的應用建議。請將這句話與日常教學壓力、學生挑戰或自我照顧聯繫起來，給予支持和具體行動方向。回應必須限制在一個段落內，約 80-100 字。";
+
+        // 內建卡片內容 (64 張 - 簡化為 10 張用於測試)
+        const builtInCards = [
+            "你不孤單，你的努力都有被看到。",
+            "你的專業價值無可取代，請為自己感到驕傲。",
+            "今天，你已經做得夠好了，給自己一個微笑。",
+            "允許自己休息，充電後的你更有力量。",
+            "你的話語，可能改變了一個孩子的一生，影響力無遠弗屆。",
+            "每個挑戰，都將成為你故事裡最精彩的一頁。",
+            "尋求協助是力量的展現，不是軟弱。",
+            "放下小小的挫折，明天又是嶄新的一天。",
+            "你正在創造的未來，比你想像的更宏大。",
+            "一顆種子的萌芽，往往需要很久的時光。耐心等待。",
+        ];
+
+        // 彩虹卡片顏色 (柔和漸變)
+        const rainbowColors = [
+            ['#FFB6C1', '#FFDAB9'], // 輕粉/蜜桃
+            ['#FFA07A', '#FFDEAD'], // 淺橙/奶油
+            ['#ADD8E6', '#87CEFA'], // 淺藍/天空
+            ['#98FB98', '#ADFF2F'], // 淺綠/黃綠
+            ['#BA55D3', '#DA70D6'], // 中紫/蘭紫
+            ['#F08080', '#FA8072'], // 珊瑚/鮭魚
+            ['#DAA520', '#BDB76B'], // 金黃/橄欖
+        ];
+
+        // 取得今天的日期 (YYYY-MM-DD)
+        const getTodayDate = () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        
+        // 格式化時間戳為 YYYY-MM-DD HH:MM
+        const formatTimestamp = (timestamp) => {
+            if (!timestamp) return '未知日期';
+            const date = new Date(timestamp);
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            const h = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d} ${h}:${min}`;
+        };
+
+        document.getElementById('dateDisplay').textContent = `今天是 ${getTodayDate()}`;
+
+        // 初始化 Firebase
+        const initFirebase = async () => {
+            try {
+                // 偵錯：輸出配置資訊，幫助確認錯誤來源
+                console.log("Firebase 初始化: 檢查配置...");
+                console.log("App ID:", appId);
+                console.log("Config Keys:", Object.keys(firebaseConfig));
+
+                if (!firebaseConfig.apiKey) {
+                     // 錯誤回報：如果配置資訊仍然遺失，顯示錯誤
+                     showMessage("Firebase 配置資訊遺失。請檢查配置（或聯繫技術支援）。", 'error');
+                     return;
+                }
+
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 3. 核心認證：優先使用 Custom Token 登入，否則使用匿名登入
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("使用 Custom Token 登入成功。");
+                    } else {
+                        await signInAnonymously(auth);
+                        console.log("Custom Token 缺失，使用匿名身份登入成功。");
+                    }
+                } catch (e) {
+                    console.error("初始化登入失敗 (Custom Token 或匿名登入失敗):", e);
+                    showMessage("無法初始化使用者會話，請檢查控制台錯誤訊息。", 'error');
+                }
+
+
+                // 4. 監聽認證狀態變化
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        updateAuthUI(user);
+                        
+                        if (!isAuthReady) {
+                            isAuthReady = true;
+                            checkTodayCard();
+                            setupCustomCardsListener(); 
+                            setupDrawHistoryListener(); 
+                        }
+                    } else {
+                        // 未登入狀態
+                        userId = null;
+                        isAuthReady = true; 
+                        updateAuthUI(null);
+                        
+                        // 清空內容並提示
+                        document.getElementById('cardTitle').textContent = "無法存取 Firestore (登入失敗)";
+                        document.getElementById('cardContent').textContent = "";
+                        document.getElementById('cardFooter').textContent = "";
+                        document.getElementById('geminiInterpretationArea').classList.add('hidden');
+
+                        // 禁用抽卡和控制項
+                        document.getElementById('drawButton').disabled = true;
+                        document.getElementById('drawButton').textContent = "無法存取 Firestore (登入失敗)";
+                        document.getElementById('printButton').classList.add('hidden');
+                        document.getElementById('interpretButton').classList.add('hidden');
+                        document.getElementById('customCardsList').innerHTML = '<li class="text-gray-500 italic">無法存取 Firestore 資料。</li>';
+                        document.getElementById('historyList').innerHTML = '<p class="text-center text-gray-500">無法存取歷史紀錄。</p>';
+                        document.getElementById('historyCount').textContent = '0 筆紀錄';
+                        document.getElementById('paginationControls').innerHTML = '';
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase 初始化失敗:", error);
+                showMessage("系統初始化失敗，請檢查瀏覽器控制台的錯誤訊息。", 'error');
+                isAuthReady = true; 
+            }
+        };
+
+        // 更新 UI 狀態
+        const updateAuthUI = (user) => {
+            const userIdDisplay = document.getElementById('userIdDisplay');
+            const drawButton = document.getElementById('drawButton');
+
+            if (user) {
+                // 已登入狀態
+                userIdDisplay.innerHTML = `已登入。您的 UserID: <span class="font-bold text-purple-600 break-all">${user.uid}</span>`;
+                
+                drawButton.disabled = false;
+                drawButton.textContent = "抽取今日彩虹卡";
+            } else {
+                // 未登入狀態
+                userIdDisplay.textContent = 'UserID: 登入失敗';
+                
+                drawButton.disabled = true;
+                drawButton.textContent = "請檢查 Firebase 配置或網路連線";
+            }
+        };
+        
+        // 顯示訊息框
+        const showMessage = (text, type = 'info') => {
+            const box = document.getElementById('messageBox');
+            box.textContent = text;
+            box.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700', 'bg-red-500', 'text-white');
+            
+            if (type === 'error') {
+                box.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                box.classList.add('bg-green-100', 'text-green-700');
+            } else if (type === 'warning') {
+                box.classList.add('bg-red-500', 'text-white'); // 吸引注意的警告
+            } else {
+                box.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            // 訊息顯示後自動隱藏
+            setTimeout(() => {
+                box.classList.add('hidden');
+            }, 5000);
+            box.classList.remove('hidden');
+        };
+
+        // 更新卡片視覺效果
+        const updateCardVisuals = (colorIndex) => {
+            const cardElement = document.getElementById('cardContainer');
+            // 隨機選擇顏色，讓每次抽取都有新感覺
+            const randomColorIndex = colorIndex % rainbowColors.length; 
+            const [color1, color2] = rainbowColors[randomColorIndex];
+            
+            cardElement.style.backgroundImage = `linear-gradient(135deg, ${color1} 0%, ${color2} 100%)`;
+            cardElement.classList.add('scale-105');
+            setTimeout(() => cardElement.classList.remove('scale-105'), 300);
+        };
+
+        // 檢查今天是否已抽卡 (現在僅用於初始化顯示)
+        const checkTodayCard = async () => {
+            // 5. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) return;
+
+            const historyRef = collection(db, `artifacts/${appId}/users/${userId}/draw_history`);
+            const q = query(historyRef);
+
+            try {
+                const querySnapshot = await getDocs(q);
+                let history = [];
+                querySnapshot.forEach(doc => history.push({ id: doc.id, ...doc.data() }));
+
+                // 根據時間戳排序，找到最新的一筆
+                history.sort((a, b) => b.timestamp - a.timestamp);
+                const latestCard = history[0];
+                
+                const today = getTodayDate();
+                const drawButton = document.getElementById('drawButton');
+                const printButton = document.getElementById('printButton');
+                const interpretButton = document.getElementById('interpretButton');
+                
+                // 判斷最新一筆是否是今天抽取的
+                const isFirstDraw = !latestCard || formatTimestamp(latestCard.timestamp).startsWith(today) === false;
+                
+                if (!isFirstDraw) {
+                    // 今天已抽卡
+                    displayDrawnCard(latestCard.cardMessage, latestCard.cardIndex, latestCard.geminiInterpretation);
+                    
+                    drawButton.disabled = false;
+                    drawButton.textContent = "重新抽取";
+                    printButton.classList.remove('hidden'); // 顯示列印按鈕
+                    interpretButton.classList.remove('hidden'); // 顯示解讀按鈕
+                    document.getElementById('statusText').textContent = "今天已抽過卡，但您仍可再次抽取並覆蓋歷史紀錄。";
+                    showMessage("歡迎回來！這是您最近抽取的卡片。", 'info');
+                    return;
+                }
+                
+                // 今天尚未抽卡
+                drawButton.disabled = false;
+                drawButton.textContent = "抽取今日彩虹卡";
+                printButton.classList.add('hidden'); // 隱藏列印按鈕
+                interpretButton.classList.add('hidden'); // 隱藏解讀按鈕
+                document.getElementById('cardTitle').textContent = "點擊下方按鈕，抽取你的每日激勵";
+                document.getElementById('cardContent').classList.remove('show-content');
+                document.getElementById('cardFooter').classList.remove('show-content');
+
+                showMessage("準備好了嗎？點擊按鈕抽取今日激勵。", 'info');
+
+            } catch (error) {
+                console.error("檢查今日卡片紀錄失敗:", error);
+                showMessage("檢查紀錄失敗，請檢查網路或您 Firestore 的安全規則。", 'error');
+                drawButton.disabled = false;
+                drawButton.textContent = "抽取今日彩虹卡";
+                printButton.classList.add('hidden');
+                interpretButton.classList.add('hidden');
+            }
+        };
+
+        // 顯示已抽取卡片 (或歷史紀錄卡片)
+        const displayDrawnCard = (message, index, interpretation = null) => {
+            const titleElement = document.getElementById('cardTitle');
+            const contentElement = document.getElementById('cardContent');
+            const footerElement = document.getElementById('cardFooter');
+            const printButton = document.getElementById('printButton');
+            const interpretButton = document.getElementById('interpretButton');
+            const interpretationArea = document.getElementById('geminiInterpretationArea');
+            const interpretationText = document.getElementById('geminiInterpretationText');
+
+            // 重置動畫
+            contentElement.classList.remove('show-content');
+            footerElement.classList.remove('show-content');
+            void contentElement.offsetWidth; 
+            void footerElement.offsetWidth; 
+
+            // 判斷是否為自訂卡片
+            const isCustom = index >= builtInCards.length;
+            titleElement.textContent = isCustom ? "最新自訂佳句：" : "最新卡片：";
+            contentElement.textContent = message;
+            
+            contentElement.classList.add('show-content');
+            footerElement.classList.add('show-content');
+            
+            updateCardVisuals(index);
+            printButton.classList.remove('hidden'); 
+            interpretButton.classList.remove('hidden'); 
+            interpretButton.disabled = false; // 恢復 AI 按鈕狀態
+
+            // 處理歷史記錄中的 AI 解讀結果
+            if (interpretation) {
+                interpretationArea.classList.remove('hidden');
+                interpretationText.innerHTML = interpretation.replace(/\n/g, '<br>');
+                interpretButton.disabled = true; // 如果已經有解讀，就禁用按鈕
+                interpretButton.textContent = "✨ 已獲得應用建議";
+            } else {
+                interpretationArea.classList.add('hidden');
+                interpretationText.textContent = '';
+                interpretButton.textContent = "✨ 獲得今日應用建議";
+            }
+        };
+        
+        // 重新顯示歷史紀錄卡片到主畫面上
+        window.displayHistoryCard = (message, index, interpretation) => {
+            // 確保將空字串轉換回 null，以便 displayDrawnCard 正確處理
+            // 需要對傳入的字串進行解碼，因為在 renderDrawHistoryList 中做了轉義
+            const decodedInterpretation = interpretation === '' ? null : interpretation.replace(/\\'/g, "'").replace(/\\"/g, '"');
+            const decodedMessage = message.replace(/\\'/g, "'").replace(/\\"/g, '"');
+            
+            // 呼叫現有的顯示函數來更新主卡片 UI
+            displayDrawnCard(decodedMessage, index, decodedInterpretation);
+
+            // 更新狀態訊息
+            document.getElementById('statusText').textContent = "這是從歷史紀錄中重新顯示的卡片內容。您可以點擊 AI 按鈕生成應用建議或重新抽取。";
+            
+            // 確保抽卡按鈕狀態正確
+            const drawButton = document.getElementById('drawButton');
+            drawButton.disabled = false;
+            drawButton.textContent = "重新抽取";
+            showMessage("歷史卡片已顯示於主畫面。", 'info');
+        };
+
+
+        // 抽卡主邏輯
+        window.drawCard = async () => {
+            if (!isAuthReady || !userId || !db) {
+                showMessage("請等待系統完成初始化。", 'warning');
+                return;
+            }
+
+            const today = getTodayDate();
+            const drawButton = document.getElementById('drawButton');
+
+            // 確保按鈕被禁用，避免重複點擊
+            drawButton.disabled = true;
+            drawButton.textContent = "抽取中...";
+
+            try {
+                // 1. 合併卡片庫 (內建 + 自訂)
+                const combinedCardPool = [...builtInCards, ...customCards.map(c => c.quote)];
+                
+                if (combinedCardPool.length === 0) {
+                    showMessage("卡片庫為空！請先新增自訂佳句。", 'warning');
+                    drawButton.disabled = false;
+                    drawButton.textContent = "重新抽取";
+                    return;
+                }
+
+                // 2. 隨機選取一張卡片 (這裡不再檢查歷史，允許重複抽取)
+                const randomIndex = Math.floor(Math.random() * combinedCardPool.length);
+                const drawnCardMessage = combinedCardPool[randomIndex];
+
+                // 3. 更新卡片視覺與內容
+                displayDrawnCard(drawnCardMessage, randomIndex);
+
+                // 4. 將抽取結果存入 Firestore 的 history 集合
+                // 6. 使用 appId 變數
+                const historyCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/draw_history`);
+                await addDoc(historyCollectionRef, {
+                    cardMessage: drawnCardMessage,
+                    cardIndex: randomIndex,
+                    drawnDate: today,
+                    timestamp: new Date().getTime(),
+                    geminiInterpretation: null // 預設為空
+                });
+                
+                drawButton.disabled = false;
+                drawButton.textContent = "重新抽取";
+                document.getElementById('statusText').textContent = "力量已注入！這份記錄已儲存於您的歷史紀錄中。";
+                showMessage("抽取成功！這份激勵將伴隨你一整天。", 'success');
+
+            } catch (error) {
+                console.error("抽取卡片並儲存紀錄失敗:", error);
+                showMessage("抽取紀錄儲存失敗，請檢查網路或 Firestore 安全規則。", 'error');
+                drawButton.disabled = false; 
+                drawButton.textContent = "重新抽取"; 
+            }
+        };
+
+        // --- Gemini API 激勵語句解讀功能 ---
+        window.getGeminiInterpretation = async () => {
+            const interpretationArea = document.getElementById('geminiInterpretationArea');
+            const interpretationText = document.getElementById('geminiInterpretationText');
+            const interpretButton = document.getElementById('interpretButton');
+            const drawnCardContent = document.getElementById('cardContent').textContent;
+            
+            if (!drawnCardContent || drawnCardContent === '卡片內容' || drawnCardContent === '系統初始化中...') {
+                showMessage('請先抽取今日卡片！', 'warning');
+                return;
+            }
+
+            interpretationArea.classList.remove('hidden');
+            interpretationText.innerHTML = '<div class="text-center animate-pulse">正在呼叫 Gemini AI 智慧解讀中... 請稍候 ✨</div>';
+            interpretButton.disabled = true;
+            interpretButton.textContent = "AI 解讀中...";
+
+
+            const userQuery = `請根據這句教師激勵語句：「${drawnCardContent}」，提供應用建議。`;
+            
+            // API Call Setup (using exponential backoff)
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+            
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            let response;
+            let success = false;
+            let retries = 0;
+            const maxRetries = 5;
+
+            while (retries < maxRetries && !success) {
+                try {
+                    response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        success = true;
+                        break;
+                    } else if (response.status === 429) {
+                        const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                        console.warn(`Rate limit hit, retrying in ${delay / 1000}s...`);
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        retries++;
+                    } else {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                } catch (error) {
+                    console.error('Fetch error during retry:', error);
+                    retries++;
+                    if (retries >= maxRetries) throw error; 
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+
+            if (success) {
+                try {
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (text) {
+                        interpretationText.innerHTML = text.replace(/\n/g, '<br>');
+                        showMessage('AI 解讀已完成！', 'success');
+                        
+                        // **關鍵步驟：更新歷史紀錄中的 AI 解讀結果**
+                        await updateLatestCardInterpretation(drawnCardContent, text);
+                        interpretButton.textContent = "✨ 已獲得應用建議";
+                        interpretButton.disabled = true; // 完成後禁用按鈕
+                    } else {
+                        interpretationText.textContent = 'AI 解讀失敗：無法取得有效的文字回應。';
+                        interpretButton.textContent = "✨ 獲得今日應用建議";
+                        interpretButton.disabled = false;
+                    }
+                } catch (e) {
+                    console.error('Parsing or processing error:', e);
+                    interpretationText.textContent = 'AI 解讀失敗：解析回應時發生錯誤。';
+                    interpretButton.textContent = "✨ 獲得今日應用建議";
+                    interpretButton.disabled = false;
+                }
+            } else {
+                interpretationText.textContent = 'AI 解讀請求失敗，請檢查網路或稍後重試。';
+                interpretButton.textContent = "✨ 獲得今日應用建議";
+                interpretButton.disabled = false;
+            }
+        };
+
+        // 輔助函數：更新歷史紀錄中最新抽卡的 AI 解讀結果
+        const updateLatestCardInterpretation = async (cardMessage, interpretationText) => {
+            // 7. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) return;
+
+            const historyRef = collection(db, `artifacts/${appId}/users/${userId}/draw_history`);
+            const q = query(historyRef); // 再次查詢所有紀錄
+
+            try {
+                const querySnapshot = await getDocs(q);
+                let latestDoc = null;
+                let latestTimestamp = 0;
+
+                // 找到與目前卡片內容和時間戳最匹配的最新一筆紀錄
+                querySnapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (data.cardMessage === cardMessage && data.timestamp > latestTimestamp) {
+                        latestTimestamp = data.timestamp;
+                        latestDoc = doc;
+                    }
+                });
+
+                if (latestDoc) {
+                    const docRef = doc(db, `artifacts/${appId}/users/${userId}/draw_history`, latestDoc.id);
+                    await setDoc(docRef, { geminiInterpretation: interpretationText }, { merge: true });
+                    console.log(`成功更新歷史紀錄 ${latestDoc.id} 的 AI 解讀。`);
+                } else {
+                    console.warn("未找到最新抽卡紀錄進行更新。");
+                }
+            } catch (error) {
+                console.error("更新 AI 解讀到歷史紀錄失敗:", error);
+            }
+        };
+
+
+        // --- 列印/下載功能 ---
+        window.downloadCardImage = async () => {
+            const printArea = document.getElementById('printableArea');
+            const drawButton = document.getElementById('drawButton');
+            const printButton = document.getElementById('printButton');
+            const interpretButton = document.getElementById('interpretButton');
+            const interpretationArea = document.getElementById('geminiInterpretationArea');
+            const interpretationText = document.getElementById('geminiInterpretationText');
+
+            // 暫時隱藏按鈕，確保截圖乾淨
+            drawButton.classList.add('hidden');
+            printButton.classList.add('hidden');
+            interpretButton.classList.add('hidden'); 
+
+            // 檢查 AI 解讀區是否已展開，若未展開則暫時收合
+            const wasInterpretationAreaHidden = interpretationArea.classList.contains('hidden');
+            if (wasInterpretationAreaHidden) {
+                // 如果 AI 解讀內容是空的，則保持隱藏，避免截圖出現空區域
+                if (interpretationText.textContent !== '') {
+                    interpretationArea.classList.remove('hidden');
+                }
+            }
+            
+            // 延遲執行，確保 DOM 狀態更新完成
+            setTimeout(async () => {
+                try {
+                    const canvas = await html2canvas(printArea, {
+                        backgroundColor: '#f7f3f9', // 捕捉區域的背景色
+                        scale: 2, // 使用較高解析度截圖
+                    });
+
+                    const today = getTodayDate();
+                    const fileName = `情緒彩虹卡_${today}.png`;
+                    
+                    // 創建臨時下載連結
+                    const image = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = image;
+                    link.download = fileName;
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    showMessage("卡片圖片已成功下載！", 'success');
+                } catch (error) {
+                    console.error("下載卡片圖片失敗:", error);
+                    showMessage("下載卡片圖片失敗。", 'error');
+                } finally {
+                    // 恢復按鈕可見性
+                    drawButton.classList.remove('hidden');
+                    printButton.classList.remove('hidden');
+                    // 只有在 AI 解讀按鈕未被點擊時，才恢復它的可見性
+                    if (document.getElementById('cardContent').textContent !== '卡片內容' && document.getElementById('cardContent').textContent !== '系統初始化中...') {
+                        interpretButton.classList.remove('hidden');
+                    }
+                    
+                    // 恢復 AI 解讀區塊的隱藏狀態 (如果原本是隱藏的)
+                    if (wasInterpretationAreaHidden) {
+                        interpretationArea.classList.add('hidden');
+                    }
+                }
+            }, 100); 
+        };
+        // --- 自訂佳句功能 (CRUD) ---
+
+        // 設定自訂卡片的即時監聽 
+        const setupCustomCardsListener = () => {
+            // 8. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) return;
+
+            const customCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/custom_cards`);
+            
+            onSnapshot(query(customCollectionRef), (snapshot) => {
+                const fetchedCards = [];
+                snapshot.forEach(doc => {
+                    fetchedCards.push({ id: doc.id, ...doc.data() });
+                });
+                customCards = fetchedCards;
+                renderCustomCardsList();
+            }, (error) => {
+                console.error("監聽自訂佳句失敗:", error);
+                showMessage("載入自訂佳句失敗，請檢查 Firestore 安全規則。", 'error');
+            });
+        };
+
+        // 渲染自訂佳句列表
+        const renderCustomCardsList = () => {
+            const listElement = document.getElementById('customCardsList');
+            const countElement = document.getElementById('customCardCount');
+            listElement.innerHTML = ''; 
+            
+            countElement.textContent = customCards.length;
+
+            if (customCards.length === 0) {
+                listElement.innerHTML = '<li class="text-gray-500 italic">目前沒有自訂佳句。</li>';
+                return;
+            }
+
+            customCards.forEach(card => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-white rounded-lg border';
+                li.innerHTML = `
+                    <span class="flex-1 mr-4 text-gray-700">${card.quote}</span>
+                    <button data-id="${card.id}" 
+                            onclick="handleDeleteCustomCard(this.dataset.id)"
+                            class="p-1 text-red-500 hover:text-red-700 rounded-full transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                `;
+                listElement.appendChild(li);
+            });
+        };
+
+        // 儲存新的自訂佳句
+        window.handleSaveCustomCard = async () => {
+            // 9. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) {
+                showMessage("請等待系統完成初始化才能儲存佳句。", 'error');
+                return;
+            }
+
+            const input = document.getElementById('newCustomQuote');
+            const quote = input.value.trim();
+
+            if (quote.length < 5) {
+                showMessage("佳句內容太短了，請至少輸入 5 個字。", 'warning');
+                return;
+            }
+
+            try {
+                const customCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/custom_cards`);
+                await addDoc(customCollectionRef, {
+                    quote: quote,
+                    createdAt: new Date().getTime()
+                });
+                input.value = '';
+                showMessage("自訂佳句儲存成功！已加入抽卡庫。", 'success');
+            } catch (error) {
+                console.error("儲存自訂佳句失敗:", error);
+                showMessage("儲存自訂佳句失敗，請檢查網路或 Firestore 安全規則。", 'error');
+            }
+        };
+
+        // 刪除自訂佳句
+        window.handleDeleteCustomCard = async (docId) => {
+            // 10. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) return;
+
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/custom_cards`, docId);
+                await deleteDoc(docRef);
+                showMessage("佳句已移除。", 'info');
+            } catch (error) {
+                console.error("刪除自訂佳句失敗:", error);
+                showMessage("刪除自訂佳句失敗，請檢查網路或 Firestore 安全規則。", 'error');
+            }
+        };
+
+        // 展開/收合自訂佳句區塊
+        window.toggleCustomCardsSection = () => {
+            const section = document.getElementById('customCardsSection');
+            const icon = document.getElementById('toggleIcon');
+            section.classList.toggle('active');
+            if (section.classList.contains('active')) {
+                icon.textContent = '▲';
+            } else {
+                icon.textContent = '▼';
+            }
+        };
+
+        // --- 歷史紀錄功能 (新增分頁邏輯) ---
+        
+        // 設定歷史紀錄的即時監聽
+        const setupDrawHistoryListener = () => {
+            // 11. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) return;
+
+            const historyCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/draw_history`);
+            
+            // 使用 onSnapshot 監聽歷史紀錄變更，不使用 orderBy，在 JS 中排序
+            onSnapshot(historyCollectionRef, (snapshot) => {
+                const fetchedHistory = [];
+                snapshot.forEach(doc => {
+                    fetchedHistory.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // 根據時間戳倒序排序 (最新在最前面)
+                fetchedHistory.sort((a, b) => b.timestamp - a.timestamp);
+                
+                allHistoryRecords = fetchedHistory; // 更新全域歷史紀錄
+                
+                // 重新渲染列表，保持當前頁碼
+                renderDrawHistoryList();
+            }, (error) => {
+                console.error("監聽歷史紀錄失敗:", error);
+                const historyLoading = document.getElementById('historyLoading');
+                if (historyLoading) {
+                    historyLoading.textContent = '載入歷史紀錄失敗，請檢查 Firestore 安全規則。';
+                }
+            });
+        };
+        
+        // 渲染歷史紀錄列表 (加入分頁邏輯)
+        const renderDrawHistoryList = () => {
+            const listElement = document.getElementById('historyList');
+            const countElement = document.getElementById('historyCount');
+            
+            if (!listElement) {
+                console.error("DOM 元素 #historyList 不存在。");
+                return;
+            }
+
+            listElement.innerHTML = ''; // 清空列表
+            
+            const totalRecords = allHistoryRecords.length;
+            countElement.textContent = `${totalRecords} 筆紀錄`;
+
+            if (totalRecords === 0) {
+                listElement.innerHTML = '<p class="text-center text-gray-500">目前沒有抽取紀錄。</p>';
+                document.getElementById('paginationControls').innerHTML = ''; // 清空分頁控制項
+                const historyLoading = document.getElementById('historyLoading');
+                if (historyLoading) {
+                    historyLoading.classList.add('hidden');
+                }
+                return;
+            }
+
+            // 計算當前頁要顯示的資料
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, totalRecords);
+            const recordsToDisplay = allHistoryRecords.slice(startIndex, endIndex);
+
+            recordsToDisplay.forEach(item => {
+                const formattedDate = formatTimestamp(item.timestamp);
+                
+                // 確保傳遞給 JavaScript 函數的字串被正確轉義
+                const escapedMessage = item.cardMessage.replace(/'/g, "\\'").replace(/"/g, '\\"');
+                const escapedInterpretation = item.geminiInterpretation ? 
+                    item.geminiInterpretation.replace(/'/g, "\\'").replace(/"/g, '\\"') : '';
+                
+                const div = document.createElement('div');
+                div.className = 'border-b pb-4';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start p-3 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer" onclick="toggleHistoryDetails('${item.id}')">
+                        <div class="flex-1 min-w-0">
+                            <p class="text-xs font-semibold text-purple-600">${formattedDate}</p>
+                            <p class="text-base text-gray-800 truncate">${item.cardMessage}</p>
+                            ${item.geminiInterpretation ? 
+                                '<span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">已解讀</span>' : 
+                                '<span class="inline-flex items-center mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">未解讀</span>'
+                            }
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <!-- 新增：重新顯示至主卡片按鈕 -->
+                            <button onclick="event.stopPropagation(); displayHistoryCard('${escapedMessage}', ${item.cardIndex}, '${escapedInterpretation}')"
+                                    title="重新顯示至主卡片"
+                                    class="p-1 text-green-600 hover:text-green-800 rounded-full transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+
+                            <button onclick="event.stopPropagation(); handleDeleteHistory('${item.id}')"
+                                    title="刪除紀錄"
+                                    class="p-1 text-red-500 hover:text-red-700 rounded-full transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                            <span class="text-purple-500 font-bold history-toggle-icon" id="icon-${item.id}">▼</span>
+                        </div>
+                    </div>
+                    
+                    <div id="details-${item.id}" class="history-item-details pl-3">
+                        <div class="p-3 border border-purple-200 bg-white rounded-lg">
+                            <h4 class="font-bold text-purple-700 mb-2">應用建議：</h4>
+                            <p class="text-sm text-gray-600 whitespace-pre-line">
+                                ${item.geminiInterpretation ? item.geminiInterpretation : '尚無 AI 應用建議，請在主畫面重新抽取此卡後點擊「獲得今日應用建議」來生成。'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                listElement.appendChild(div);
+            });
+            
+            const historyLoading = document.getElementById('historyLoading');
+            if (historyLoading) {
+                historyLoading.classList.add('hidden');
+            }
+
+            // 渲染分頁控制項
+            renderPaginationControls(totalRecords);
+        };
+
+        // 渲染分頁控制項
+        const renderPaginationControls = (totalRecords) => {
+            const controls = document.getElementById('paginationControls');
+            controls.innerHTML = '';
+
+            const totalPages = Math.ceil(totalRecords / itemsPerPage);
+            if (totalPages <= 1) return; // 少於等於一頁則不顯示
+
+            // 上一頁按鈕
+            controls.innerHTML += `
+                <button onclick="changePage(${currentPage - 1})" 
+                        ${currentPage === 1 ? 'disabled' : ''}
+                        class="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    上一頁
+                </button>
+            `;
+
+            // 頁碼按鈕
+            const maxPageButtons = 5; // 最多顯示 5 個頁碼按鈕
+            let startPage = Math.max(1, currentPage - Math.floor(maxPageButtons / 2));
+            let endPage = Math.min(totalPages, startPage + maxPageButtons - 1);
+
+            if (endPage - startPage + 1 < maxPageButtons) {
+                startPage = Math.max(1, endPage - maxPageButtons + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const isActive = i === currentPage ? 'bg-purple-600 text-white shadow-md' : 'bg-white text-gray-700 border border-gray-300 hover:bg-purple-50';
+                controls.innerHTML += `
+                    <button onclick="changePage(${i})" 
+                            class="page-button px-3 py-2 text-sm font-medium rounded-lg ${isActive} transition-colors">
+                        ${i}
+                    </button>
+                `;
+            }
+
+            // 下一頁按鈕
+            controls.innerHTML += `
+                <button onclick="changePage(${currentPage + 1})" 
+                        ${currentPage === totalPages ? 'disabled' : ''}
+                        class="px-3 py-2 text-sm font-medium rounded-lg text-gray-700 bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    下一頁
+                </button>
+            `;
+            
+            // 顯示總頁數
+            controls.innerHTML += `
+                <span class="text-sm text-gray-600 ml-4">第 ${currentPage} / ${totalPages} 頁</span>
+            `;
+        };
+
+        // 改變當前頁碼
+        window.changePage = (pageNumber) => {
+            const totalPages = Math.ceil(allHistoryRecords.length / itemsPerPage);
+
+            if (pageNumber >= 1 && pageNumber <= totalPages) {
+                currentPage = pageNumber;
+                renderDrawHistoryList();
+                // 捲動到歷史紀錄區塊頂部
+                document.getElementById('historyList').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        };
+
+
+        // 展開/收合歷史紀錄詳情
+        window.toggleHistoryDetails = (docId) => {
+            const details = document.getElementById(`details-${docId}`);
+            const icon = document.getElementById(`icon-${docId}`);
+            // 由於這些元素是在 renderDrawHistoryList 中創建的，在這裡也應確保它們存在
+            if (details && icon) {
+                details.classList.toggle('active');
+                if (details.classList.contains('active')) {
+                    icon.textContent = '▲';
+                } else {
+                    icon.textContent = '▼';
+                }
+            }
+        };
+
+        // 刪除歷史紀錄
+        window.handleDeleteHistory = async (docId) => {
+            // 12. 使用 appId 變數
+            if (!isAuthReady || !userId || !db) {
+                showMessage("系統尚未準備好，無法執行刪除。", 'error');
+                return;
+            }
+            
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${userId}/draw_history`, docId);
+                await deleteDoc(docRef);
+                showMessage("歷史紀錄已成功刪除！", 'success');
+            } catch (error) {
+                console.error("刪除歷史紀錄失敗:", error);
+                showMessage("刪除歷史紀錄失敗，請檢查網路或 Firestore 安全規則。", 'error');
+            }
+        };
+
+
+        // 視窗載入完成後初始化 Firebase
+        window.onload = initFirebase;
+    </script>
+</body>
+</html>
